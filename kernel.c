@@ -1,12 +1,9 @@
 #include "multiboot.h"
-#include <stdint.h>  // Include for uint16_t
+#include <stdint.h>
+#include "keyboard.h"
 
 // VGA text buffer to print the message to the screen
 volatile unsigned short *vga_buffer = (unsigned short *)0xB8000;
-
-// Keyboard I/O port addresses
-#define KEYBOARD_DATA_PORT 0x60
-#define KEYBOARD_STATUS_PORT 0x64
 
 // VGA text mode constants
 #define VGA_WIDTH 80
@@ -30,7 +27,8 @@ void print_string(const char *str, int row, int col) {
 
 // Function to print a single character at the current cursor position
 void print_char(char c) {
-    static int row = 0, col = 0;
+    //start at row 2 because of previous prints
+    static int row = 3, col = 0;
 
     if (c == '\n') {
         row++;
@@ -49,37 +47,6 @@ void print_char(char c) {
     }
 }
 
-// Basic inb function (read from I/O port)
-static inline uint8_t inb(uint16_t port) {
-    uint8_t result;
-    asm volatile("inb %1, %0" : "=a"(result) : "Nd"(port));
-    return result;
-}
-
-// Function to read a byte from the keyboard
-uint8_t read_keyboard() {
-    // Wait for a byte to be available in the data port
-    while ((inb(KEYBOARD_STATUS_PORT) & 1) == 0) {}
-    return inb(KEYBOARD_DATA_PORT); // Read the scancode from the data port
-}
-
-// Function to handle the keyboard input and print it to the screen
-void handle_input() {
-    uint8_t scancode = read_keyboard();  // Get the key press scancode
-
-    // Basic ASCII keymap (You can expand this as needed)
-    if (scancode >= 0x2 && scancode <= 0x1A) {  // Letters A-Z
-        print_char(scancode - 0x02 + 'A');
-    } else if (scancode >= 0x1E && scancode <= 0x26) { // Numbers 1-9
-        print_char(scancode - 0x1E + '1');
-    } else if (scancode == 0x1C) {  // Enter
-        print_char('\n');
-    } else if (scancode == 0x0E) {  // Backspace
-        // Clear the last character printed
-        // TODO: Handle backspace by moving the cursor back and replacing the character with a space
-    }
-}
-
 // Kernel entry point for GRUB (must have a specific signature)
 void kernel_main(void) {
     // Clear the screen before printing anything
@@ -87,6 +54,14 @@ void kernel_main(void) {
 
     // Print "Hello from the Kernel!" to the screen
     print_string("Hello from the kernel!", 0, 0);
+    // Print a line of dashes, as wide as the console
+    char dashes[VGA_WIDTH + 1];  // One extra space for null terminator
+    for (int i = 0; i < VGA_WIDTH; i++) {
+        dashes[i] = '-';  // Fill the array with dashes
+    }
+    dashes[VGA_WIDTH] = '\0';  // Null-terminate the string
+
+    print_string(dashes, 1, 0);  // Print the dashes on the second line
 
     // Now ask the user to type something
     const char *message = "Type something: ";
@@ -94,7 +69,7 @@ void kernel_main(void) {
 
     // Continuously read input and print it
     while (1) {
-        handle_input();  // Read and print user input
+        handle_input();  // Call function from keyboard.c to read and handle input
     }
 }
 

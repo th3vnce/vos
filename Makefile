@@ -13,26 +13,19 @@ ISO_DIR = iso
 CFLAGS = -ffreestanding -O2 -Wall -Wextra
 LDFLAGS = -T linker.ld -nostdlib
 
-# Assembly files
-ASMFILES = boot.asm
-
 # Source files
-SRC = kernel.c
+SRC = kernel.c keyboard.c
 OBJ = $(SRC:.c=.o)
 
 # Build the kernel binary
-all: $(KERNEL_BIN) $(ISO)
+all: $(ISO)
 
 $(KERNEL_BIN): $(OBJ)
-	$(CC) $(LDFLAGS) $(OBJ) -o $(KERNEL_BIN)
+	$(LD) $(LDFLAGS) -o $(KERNEL_BIN) $(OBJ)
 
-# Assemble the bootloader
-boot.asm: boot.asm
-	$(ASM) -f bin boot.asm -o boot.bin
-
-# Link the object files to create the binary
-$(OBJ): $(SRC)
-	$(CC) $(CFLAGS) -c $(SRC) -o $(OBJ)
+# Compile C source files to object files
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 # Create the ISO
 $(ISO): $(KERNEL_BIN)
@@ -43,5 +36,5 @@ $(ISO): $(KERNEL_BIN)
 
 # Clean up build files
 clean:
-	rm -f *.o $(KERNEL_BIN) boot.bin $(ISO)
+	rm -f *.o $(KERNEL_BIN) $(ISO)
 	rm -rf $(ISO_DIR)
